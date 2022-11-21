@@ -1,0 +1,218 @@
+<link rel="stylesheet" href="editor.css"> 
+<div id="scontainer">
+	<textarea id="asm" type="text"></textarea>
+	<div id="console">*> The Debugger Console.</div>
+</div>
+<br>
+<button type="button" onclick="save();">Save</button>
+<script>
+	const glyph = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.";
+	const numbers = "0123456789";
+	const defined_asm = "mes meg med meb rea reb rec jcm jop jmp".split(" ");
+    let text = document.getElementById("asm");
+	let dconsole = document.getElementById("console");
+	let focusing = false;
+	
+	let col = 0;
+	let row = 0;
+    function save()
+    {
+		let err_amt = 0;
+		let err_res = [];
+		
+		let wrn_amt = 0;
+		let wrn_res = [];
+	
+		let asm = text.value.split("\n");
+        let instructions = [];
+        let arguments = [];
+		let comments = [];
+		
+		let instr_indent = [];
+        for (let i = 0; i < asm.length; i++)
+        {
+			for (let m = 0; m < asm[i].length; m++)
+			{
+				if (asm[i].charAt(0) == ";")
+				{
+					comments.push(asm[i].substring(1, asm[i].length));
+					break;
+				}
+				if (asm[i].charAt(m) == " ")
+					continue;
+					
+				let parts = asm[i].substring(m, asm[i].length).split(" ");
+
+				instructions.push(parts[0]);
+				instr_indent.push(m);
+				for (let j = 0; j < parts.length - 1; j++)
+				{
+					arguments.push(parts[1 + j]);
+				}
+				break;
+			}
+        }
+		let s = 0;
+		for (let i = 0; i < instructions.length; i++)
+		{
+			let invalid = 0;
+			let a1 = arguments[0 + s];
+			let a2 = arguments[1 + s];
+			
+			let a1works = false;
+			let a2works = false;
+			switch (instructions[i])
+			{
+				case "mes":
+					if (!(a1 === undefined))
+					{
+						if (arguments.includes(a1) && !a1.includes(defined_asm))
+						{
+							a1works = true;
+						}
+						if (a1.startsWith("\"") && a1.endsWith("\"") && isNaN(parseInt(a1)))
+						{
+							arguments[0 + i * 2] = a1.substring(1, a1.length - 1);
+							a1works = true;
+						}
+						if (parseInt(a1) < 256 && parseInt(a1) >= 0)
+						{
+							arguments[0 + i * 2] = parseInt(a1);
+							a1works = true;
+						}
+					}
+					if (!a1works)
+					{
+						err_res.push("Argument 1 of the mes instruction is invalid. Maybe no arguments were placed? Maybe byte overflow (greater than 255 or less than 0?) Maybe you flipped the address and value around by accident? Maybe invalid type (not 255-0 value, character, or a string?)");
+						err_amt++;
+					}
+					if (!(a2 === undefined))
+					{
+						if (!isNaN(a2) && (parseInt(a2) < 65536 && parseInt(a2) >= 0))
+						{
+							if (parseInt(a2) >= 64)
+							{
+								wrn_res.push("Setting memory on address 64 or above is unsafe code. Please make sure that this address at all has been defined.");
+								wrn_amt++;
+							}
+							arguments[1 + i * 2] = parseInt(a2);
+							a2works = true;
+						}
+					}
+					if (!a2works)
+					{
+						err_res.push("Argument 2 of the mes instruction is invalid. Maybe one argument was placed? Maybe you're using a conflicting type? Maybe 2 byte overflow (greater than 66535 or less than 0?)");
+						err_amt++;
+					}
+					s += 2;
+                    break;
+                case "meg":
+					if (!(a1 === undefined))
+					{
+						if (!isNaN(a1) && (a1 < 65536 && a1 >= 0))
+						{
+							if (parseInt(a1) >= 64)
+							{
+								wrn_res.push("Getting memory on address 64 or above is unsafe code. Please make sure that this address at all has been defined.");
+								wrn_amt++;
+							}
+							arguments[0 + i * 2] = parseInt(a1);
+							a1works = true;
+						}
+					}
+					if (!a1works)
+					{
+						err_res.push("Argument 1 of the meg instruction is invalid. Maybe no arguments were placed? Maybe you're using a conflicting type? Maybe 2 byte overflow (greater than 66535 or less than 0?)");
+						err_amt++;
+					}
+					s++;
+                    break;
+                case "med":
+					if (!(a1 === undefined))
+					{
+						if (!isNaN(a1) && (a1 < 255 && a1 >= 255))
+						{
+							arguments[0 + i * 2] = parseInt(a1);
+							a1works = true;
+						}
+					}
+					if (!a1works)
+					{
+						err_res.push("Argument 1 of the meg instruction is invalid. Maybe no arguments were placed? Maybe byte overflow (greater than 255 or less than 0?)");
+						err_amt++;
+					}
+					s++;
+                    break;
+                case "meb":
+                    break;
+                case "rea":
+                    break;
+                case "reb":
+                    break;
+                case "rec":
+                    break;
+                case "jcm":
+                    break;
+                case "jop":
+                    break;
+                case "jmp":
+                    break;
+                default:
+					invalid = 1;
+                    break;
+			}
+			
+			if (instructions[i].charAt(instructions[i].length - 1) === ":")
+			{
+				let str = instructions[i].substring(0, instructions[i].length - 1);
+				console.log(str);
+				console.log(!defined_asm.includes(str));
+				if (!defined_asm.includes(str))
+				{
+					for (let j = 0; j < str.length; j++)
+					{
+						if (glyph.indexOf(str.charAt(j)) != -1)
+						{
+							continue;
+						}
+						err_res.push("Pointer storage is invalid. Maybe has an invalid character?");
+						err_amt++;
+						break;
+					}
+				}
+				else
+				{
+					err_res.push("Pointer storage is invalid. Maybe has the same name as one of the instructions?");
+					err_amt++;
+				}
+			}
+		}
+        console.log(instructions);
+		console.log(arguments);
+		console.log(comments);
+		if (err_amt == 0)
+		{
+			if (wrn_amt == 0)
+			{
+				dconsole.innerHTML = "*> The assembly program was built without issue." + " (You can save your assembly.)";
+			}
+			else
+			{
+				dconsole.innerHTML = "*> The assembly program was built with " + wrn_amt + (wrn_amt == 1? " warning." : " warnings.") + " (You can save your assembly.)";
+				for (let a = 0; a < wrn_amt; a++)
+				{
+					dconsole.innerHTML += "<br>*> " + wrn_res[a];
+				}
+			}
+			localStorage.setItem("assembly-storage", JSON.stringify({ instr: instructions, args: arguments }));
+		}
+		else
+		{
+			dconsole.innerHTML = "!> The assembly program was built with " + err_amt + (err_amt == 1? " error." : " errors.") + " (You cannot save your assembly.)";
+			for (let a = 0; a < err_amt; a++)
+			{
+				dconsole.innerHTML += "<br>!> " + err_res[a];
+			}
+		}
+	}
+</script>
