@@ -41,8 +41,8 @@ function bind_texture(name, path)
 {
     let img = document.createElement("img");
 
-    img.src = path + ".png";
-    img.srcset = path + ".png";
+    img.src = "./res/" + path + ".png";
+    img.srcset = "./res/" + path + ".png";
 
     textures.set(name, img);
 }
